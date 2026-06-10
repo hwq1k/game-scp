@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "firebase-ai-logic-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/firebase-ai-logic-basics/SKILL.md",
+      "computedHash": "fd86e139513b9460b38ccf34b1dae8efb3a45d9ac0681b8050b1f80eee9369b1"
+    }
+  }
+}

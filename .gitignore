@@ -1,0 +1,8 @@
+# Firebase local cache
+.firebase/
+
+# Dependencias (si se añaden en el futuro)
+node_modules/
+
+# Configuración Firebase local (opcional si personalizas credenciales)
+# js/firebase-config.js

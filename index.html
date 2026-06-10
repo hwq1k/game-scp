@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="El Secreto de la Causa Piurana - Un juego educativo sobre la tradición culinaria de Piura, Perú">
   <meta name="theme-color" content="#D91023">
   <title>El Secreto de la Causa Piurana</title>
@@ -33,13 +33,25 @@
           <span class="home-best__star" aria-hidden="true">★</span>
         </div>
 
-        <nav class="home-nav home-animate home-animate--3" aria-label="Menú de inicio">
+        <div id="auth-panel-home" class="auth-panel home-animate home-animate--3">
+          <button id="btn-google-signin-home" class="auth-btn auth-btn--google" type="button">
+            <span class="auth-btn__icon" aria-hidden="true">G</span>
+            Iniciar sesión con Google
+          </button>
+          <div id="auth-user-home" class="auth-user hidden">
+            <img id="auth-user-photo-home" class="auth-user__photo" alt="" width="32" height="32">
+            <span id="auth-user-name-home" class="auth-user__name"></span>
+            <button id="btn-signout-home" class="auth-btn auth-btn--signout" type="button">Salir</button>
+          </div>
+        </div>
+
+        <nav class="home-nav home-animate home-animate--4" aria-label="Menú de inicio">
           <button id="btn-start" class="home-btn home-btn--primary" type="button">Jugar</button>
-          <button id="btn-records" class="home-btn home-btn--secondary" type="button">Tabla de récords</button>
+          <button id="btn-records" class="home-btn home-btn--secondary" type="button">Ranking</button>
           <button id="btn-credits" class="home-btn home-btn--secondary" type="button">Créditos</button>
         </nav>
 
-        <p class="home-footer home-animate home-animate--4">Piura · Perú</p>
+        <p class="home-footer home-animate home-animate--5">Piura · Perú</p>
       </div>
     </section>
 
@@ -54,7 +66,8 @@
       </header>
 
       <main class="game-main">
-        <div class="canvas-wrapper">
+        <div class="game-stage">
+          <div class="canvas-wrapper" id="canvas-wrapper">
           <canvas id="game-canvas" aria-label="Área de juego"></canvas>
 
           <div id="screen-defeat" class="overlay-screen hidden">
@@ -108,10 +121,36 @@
                     <span id="final-time" class="final-time-value">0 s</span>
                   </div>
                 </div>
+                <div id="victory-leaderboard" class="victory-leaderboard hidden">
+                  <p id="victory-auth-hint" class="victory-leaderboard__hint">Inicia sesión con Google para enviar tu puntaje al ranking global.</p>
+                  <button id="btn-google-signin-victory" class="auth-btn auth-btn--google auth-btn--compact hidden" type="button">
+                    <span class="auth-btn__icon" aria-hidden="true">G</span>
+                    Iniciar sesión con Google
+                  </button>
+                  <div id="victory-auth-signed" class="victory-leaderboard__signed hidden">
+                    <p class="victory-leaderboard__label">Enviar como <strong id="victory-auth-name"></strong></p>
+                    <button id="btn-submit-score" class="btn btn-secondary" type="button">Enviar al ranking</button>
+                  </div>
+                  <p id="submit-score-status" class="victory-leaderboard__status" aria-live="polite"></p>
+                </div>
                 <div class="btn-wrap">
                   <button id="btn-restart" class="btn btn-primary" type="button">Jugar nuevamente</button>
                 </div>
               </div>
+            </div>
+          </div>
+          </div>
+
+          <div id="touch-controls" class="touch-controls hidden" aria-label="Controles táctiles">
+            <div id="touch-scene1" class="touch-controls__panel hidden">
+              <button id="touch-press" class="touch-btn touch-btn--action" type="button" aria-label="Prensar papas">
+                <span class="touch-btn__icon">▼</span>
+                <span class="touch-btn__label">Prensar</span>
+              </button>
+            </div>
+            <div id="touch-scene2" class="touch-controls__panel touch-controls__panel--dual hidden">
+              <button id="touch-left" class="touch-btn touch-btn--dir" type="button" aria-label="Mover izquierda">◀</button>
+              <button id="touch-right" class="touch-btn touch-btn--dir" type="button" aria-label="Mover derecha">▶</button>
             </div>
           </div>
         </div>
@@ -128,16 +167,71 @@
       </footer>
     </div>
 
-    <!-- Modal: Tabla de récords -->
-    <div id="modal-records" class="home-modal hidden" role="dialog" aria-labelledby="modal-records-title" aria-modal="true">
-      <div class="home-modal__backdrop" data-close-modal></div>
-      <div class="home-modal__panel home-animate">
-        <h2 id="modal-records-title" class="home-modal__title">Tabla de récords</h2>
-        <ol id="records-list" class="records-list"></ol>
-        <p id="records-empty" class="records-empty hidden">Aún no hay récords. ¡Juega para establecer el primero!</p>
-        <button class="home-btn home-btn--secondary home-modal__close" type="button" data-close-modal>Cerrar</button>
+    <!-- Pantalla: Leaderboard -->
+    <section id="screen-leaderboard" class="leaderboard-screen hidden" aria-label="Ranking de jugadores">
+      <div class="leaderboard-screen__bg" aria-hidden="true"></div>
+
+      <div class="leaderboard-screen__inner">
+        <header class="leaderboard-header leaderboard-enter leaderboard-enter--1">
+          <div class="leaderboard-header__icon" aria-hidden="true">🏆</div>
+          <h1 class="leaderboard-header__title">Ranking</h1>
+          <p class="leaderboard-header__subtitle">Los mejores puntajes de la causa piurana</p>
+        </header>
+
+        <div id="auth-panel-leaderboard" class="auth-panel auth-panel--leaderboard leaderboard-enter leaderboard-enter--2">
+          <button id="btn-google-signin-leaderboard" class="auth-btn auth-btn--google" type="button">
+            <span class="auth-btn__icon" aria-hidden="true">G</span>
+            Iniciar sesión con Google
+          </button>
+          <div id="auth-user-leaderboard" class="auth-user hidden">
+            <img id="auth-user-photo-leaderboard" class="auth-user__photo" alt="" width="32" height="32">
+            <span id="auth-user-name-leaderboard" class="auth-user__name"></span>
+            <button id="btn-signout-leaderboard" class="auth-btn auth-btn--signout" type="button">Salir</button>
+          </div>
+        </div>
+
+        <div class="leaderboard-tabs leaderboard-enter leaderboard-enter--3" role="tablist" aria-label="Tipo de ranking">
+          <button id="tab-leaderboard-global" class="leaderboard-tab leaderboard-tab--active" type="button" role="tab" aria-selected="true">Global</button>
+          <button id="tab-leaderboard-local" class="leaderboard-tab" type="button" role="tab" aria-selected="false">Local</button>
+        </div>
+
+        <div class="leaderboard-card leaderboard-enter leaderboard-enter--4">
+          <div id="panel-leaderboard-global" class="leaderboard-panel" role="tabpanel">
+            <div class="leaderboard-table" role="table" aria-label="Ranking global">
+              <div class="leaderboard-table__head" role="row">
+                <span class="leaderboard-table__th leaderboard-table__th--pos" role="columnheader">Posición</span>
+                <span class="leaderboard-table__th leaderboard-table__th--player" role="columnheader">Jugador</span>
+                <span class="leaderboard-table__th leaderboard-table__th--score" role="columnheader">Puntaje</span>
+                <span class="leaderboard-table__th leaderboard-table__th--date" role="columnheader">Fecha</span>
+              </div>
+              <div id="leaderboard-table-body" class="leaderboard-table__body" role="rowgroup"></div>
+            </div>
+            <p id="leaderboard-loading" class="leaderboard-state">Cargando ranking global…</p>
+            <p id="leaderboard-offline" class="leaderboard-state hidden">Ranking online no disponible.</p>
+            <p id="leaderboard-error" class="leaderboard-state leaderboard-state--error hidden"></p>
+            <p id="leaderboard-empty" class="leaderboard-state hidden">Aún no hay puntajes en el ranking global.</p>
+          </div>
+
+          <div id="panel-leaderboard-local" class="leaderboard-panel hidden" role="tabpanel">
+            <div class="leaderboard-table" role="table" aria-label="Récords locales">
+              <div class="leaderboard-table__head" role="row">
+                <span class="leaderboard-table__th leaderboard-table__th--pos" role="columnheader">Posición</span>
+                <span class="leaderboard-table__th leaderboard-table__th--player" role="columnheader">Jugador</span>
+                <span class="leaderboard-table__th leaderboard-table__th--score" role="columnheader">Puntaje</span>
+                <span class="leaderboard-table__th leaderboard-table__th--date" role="columnheader">Fecha</span>
+              </div>
+              <div id="leaderboard-table-body-local" class="leaderboard-table__body" role="rowgroup"></div>
+            </div>
+            <p id="records-empty" class="leaderboard-state hidden">Aún no hay récords locales. ¡Juega para establecer el primero!</p>
+          </div>
+        </div>
+
+        <button id="btn-leaderboard-back" class="leaderboard-back leaderboard-enter leaderboard-enter--5" type="button">
+          <span class="leaderboard-back__icon" aria-hidden="true">←</span>
+          Volver
+        </button>
       </div>
-    </div>
+    </section>
 
     <!-- Modal: Créditos -->
     <div id="modal-credits" class="home-modal hidden" role="dialog" aria-labelledby="modal-credits-title" aria-modal="true">
@@ -155,11 +249,20 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/canvas-utils.js"></script>
   <script src="js/ingredients.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-utils.js"></script>
+  <script src="js/firebase-core.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/leaderboard.js"></script>
   <script src="js/home.js"></script>
+  <script src="js/touch-controls.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/scene1.js"></script>
   <script src="js/scene2.js"></script>

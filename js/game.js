@@ -4,7 +4,8 @@
  */
 (() => {
   const canvas = document.getElementById('game-canvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas?.getContext('2d');
+  const gameArea = document.getElementById('game-area');
 
   const STATE = {
     MENU: 'menu',
@@ -35,29 +36,66 @@
   let logicalWidth = 0;
   let logicalHeight = 0;
   let resizeTimer = null;
+  let hasRenderedFrame = false;
+
+  /** @returns {boolean} */
+  function isGameAreaVisible() {
+    return gameArea && !gameArea.classList.contains('hidden');
+  }
 
   /**
-   * Ajusta el canvas al contenedor y reinicia la escena activa si es necesario.
+   * Sincroniza bitmap interno con el tamaño visual del canvas.
+   * No se ejecuta en el game loop — solo en resize/orientación/ResizeObserver.
    */
   function resizeCanvas() {
-    const wrapper = canvas.parentElement;
-    const rect = wrapper.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (!isGameAreaVisible()) return;
 
-    logicalWidth = rect.width;
-    logicalHeight = rect.height;
+    const prevW = logicalWidth;
+    const prevH = logicalHeight;
+    const size = CanvasUtils.syncCanvasSize(canvas, ctx);
+    if (!size) return;
 
-    canvas.width = Math.floor(rect.width * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
+    logicalWidth = size.width;
+    logicalHeight = size.height;
 
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    if (activeScene && gameState === STATE.PLAYING) {
-      activeScene.destroy();
-      activeScene.init(ctx, logicalWidth, logicalHeight, onSceneComplete, onSceneFail);
+    if (
+      activeScene &&
+      gameState === STATE.PLAYING &&
+      activeScene.onResize &&
+      size.changed &&
+      (prevW !== logicalWidth || prevH !== logicalHeight)
+    ) {
+      activeScene.onResize(logicalWidth, logicalHeight);
     }
+  }
+
+  /**
+   * Garantiza que el canvas tenga tamaño válido tras mostrar el área de juego.
+   * @param {() => void} callback
+   */
+  function whenCanvasReady(callback) {
+    const attempt = () => {
+      resizeCanvas();
+      if (logicalWidth >= 1 && logicalHeight >= 1) {
+        callback();
+      } else {
+        requestAnimationFrame(attempt);
+      }
+    };
+    requestAnimationFrame(attempt);
+  }
+
+  /** Fondo de respaldo cuando el canvas aún no tiene escena activa. */
+  function drawPlaceholder() {
+    if (logicalWidth < 1 || logicalHeight < 1) return;
+
+    CanvasUtils.beginFrame(ctx, canvas);
+    const grad = ctx.createLinearGradient(0, 0, 0, logicalHeight);
+    grad.addColorStop(0, '#5c3820');
+    grad.addColorStop(0.5, '#3d2415');
+    grad.addColorStop(1, '#1a0e08');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
   }
 
   /** @param {Event} event */
@@ -98,13 +136,21 @@
     activeScene.handlePointerMove(coords.x);
   }
 
-  /** @param {number} index */
+  /** Muestra u oculta controles táctiles según escena activa. */
+  function updateTouchControls() {
+    TouchControls.update(gameState === STATE.PLAYING, currentSceneIndex);
+  }
+
   function startScene(index) {
+    if (logicalWidth < 1) resizeCanvas();
+
     currentSceneIndex = index;
     activeScene = SCENES[index];
     activeScene.init(ctx, logicalWidth, logicalHeight, onSceneComplete, onSceneFail);
     gameState = STATE.PLAYING;
+    hasRenderedFrame = false;
     UI.showGameplayUI();
+    updateTouchControls();
   }
 
   function onSceneFail() {
@@ -113,13 +159,14 @@
       activeScene.destroy();
       activeScene = null;
     }
+    TouchControls.hide();
 
     const msg = FAIL_MESSAGES[currentSceneIndex] ?? FAIL_MESSAGES[1];
     UI.showDefeat(msg.title, msg.text);
   }
 
   function retryCurrentScene() {
-    startScene(currentSceneIndex);
+    whenCanvasReady(() => startScene(currentSceneIndex));
   }
 
   /**
@@ -134,6 +181,7 @@
     if (currentSceneIndex < SCENES.length - 1) {
       gameState = STATE.TRANSITION;
       pendingSceneIndex = currentSceneIndex + 1;
+      TouchControls.hide();
       UI.showTransition('¡Las papas están listas!', null, UI.getScore());
       return;
     }
@@ -142,15 +190,16 @@
   }
 
   function continueToNextScene() {
-    if (pendingSceneIndex !== null) {
-      startScene(pendingSceneIndex);
-      pendingSceneIndex = null;
-    }
+    if (pendingSceneIndex === null) return;
+    const next = pendingSceneIndex;
+    pendingSceneIndex = null;
+    whenCanvasReady(() => startScene(next));
   }
 
   /** @param {{ timeRemainingMs?: number }} [sceneStats] */
   function endGame(sceneStats = {}) {
     gameState = STATE.VICTORY;
+    TouchControls.hide();
     UI.showVictory({
       score: UI.getScore(),
       timeRemainingMs: sceneStats.timeRemainingMs ?? 0,
@@ -164,24 +213,47 @@
     startScene(0);
   }
 
+  function beginPlay() {
+    UI.hideHome();
+    whenCanvasReady(startGame);
+  }
+
   function restartGame() {
     if (activeScene) {
       activeScene.destroy();
       activeScene = null;
     }
     gameState = STATE.MENU;
+    hasRenderedFrame = false;
     UI.showHome();
   }
 
-  /** @param {number} timestamp */
+  /**
+   * Bucle principal (requestAnimationFrame).
+   * Crítico: cada frame reinicia la matriz del canvas antes de dibujar.
+   * No usar ctx.scale() aquí — compone sobre el frame anterior y desplaza/acelera el contenido en X.
+   * @param {number} timestamp
+   */
   function gameLoop(timestamp) {
-    const delta = CanvasUtils.capDelta(lastTimestamp ? timestamp - lastTimestamp : 0);
-    lastTimestamp = timestamp;
+    const playing = gameState === STATE.PLAYING && activeScene && logicalWidth > 0 && ctx;
+    const showPlaceholder =
+      isGameAreaVisible() && logicalWidth > 0 && !hasRenderedFrame && !playing && ctx;
 
-    if (gameState === STATE.PLAYING && activeScene) {
-      activeScene.update(delta);
-      ctx.clearRect(0, 0, logicalWidth, logicalHeight);
-      activeScene.render();
+    if (playing || showPlaceholder) {
+      const delta = CanvasUtils.capDelta(lastTimestamp ? timestamp - lastTimestamp : 0);
+      lastTimestamp = timestamp;
+
+      if (playing) {
+        activeScene.update(delta);
+        // 1. Reset matriz → 2. clearRect en identidad → 3. escalado responsive (setTransform)
+        CanvasUtils.beginFrame(ctx, canvas);
+        ctx.save();
+        activeScene.render();
+        ctx.restore();
+        hasRenderedFrame = true;
+      } else {
+        drawPlaceholder();
+      }
     }
 
     requestAnimationFrame(gameLoop);
@@ -190,14 +262,31 @@
   function scheduleResize() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
+      TouchControls.updateBodyClass();
       resizeCanvas();
       HomeBG.onResize();
     }, 100);
   }
 
   function init() {
-    resizeCanvas();
+    if (!canvas || !ctx) {
+      console.error('[game] Canvas no disponible.');
+      return;
+    }
+
+    TouchControls.init({
+      onPress: () => activeScene?.triggerPress?.(),
+      onMoveLeft: (active) => activeScene?.setMoveLeft?.(active),
+      onMoveRight: (active) => activeScene?.setMoveRight?.(active),
+    });
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => scheduleResize());
+      ro.observe(canvas);
+    }
+
     window.addEventListener('resize', scheduleResize);
+    window.addEventListener('orientationchange', scheduleResize);
 
     canvas.addEventListener('click', handlePointer);
     canvas.addEventListener('touchstart', handlePointer, { passive: false });
@@ -205,23 +294,14 @@
     canvas.addEventListener('mousemove', handlePointerDrag);
 
     UI.initModals();
+    UI.setupLeaderboardUi();
+    UI.setupFirebaseAuth();
     UI.initLogos();
     UI.updateBestScoreDisplay();
 
-    UI.onStart(() => {
-      UI.hideHome();
-      startGame();
-    });
-
-    UI.onRecords(() => {
-      UI.renderRecordsList();
-      UI.openModal(document.getElementById('modal-records'));
-    });
-
-    UI.onCredits(() => {
-      UI.openModal(document.getElementById('modal-credits'));
-    });
-
+    UI.onStart(beginPlay);
+    UI.onRecords(() => UI.showLeaderboard());
+    UI.onCredits(() => UI.openModal(UI.getModal()));
     UI.onContinue(continueToNextScene);
     UI.onRetry(retryCurrentScene);
     UI.onRestart(restartGame);

@@ -51,6 +51,7 @@ const Scene2 = (() => {
   let difficultyTier = 0;
   let lastDifficultyTier = -1;
   let elapsedTime = 0;
+  let lastHudKey = '';
 
   function init(context, canvasWidth, canvasHeight, completeCallback, failCallback) {
     ctx = context;
@@ -86,6 +87,7 @@ const Scene2 = (() => {
     difficultyTier = 0;
     lastDifficultyTier = -1;
     elapsedTime = 0;
+    lastHudKey = '';
 
     updateHud();
     spawnWave();
@@ -191,6 +193,10 @@ const Scene2 = (() => {
   }
 
   function updateHud() {
+    const hudKey = `${levelScore}|${difficultyTier}|${CORRECT_INGREDIENTS.map((i) => caughtCounts[i.id]).join()}`;
+    if (hudKey === lastHudKey) return;
+    lastHudKey = hudKey;
+
     const progressItems = CORRECT_INGREDIENTS.map((ing) => ({
       ingredientId: ing.id,
       label: `${ing.label} (${caughtCounts[ing.id]})`,
@@ -326,13 +332,7 @@ const Scene2 = (() => {
 
     checkCollisions();
 
-    particles = particles.filter((p) => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.05;
-      p.life -= delta;
-      return p.life > 0;
-    });
+    particles = CanvasUtils.updateParticles(particles, delta);
 
     if (messageTimer > 0) messageTimer -= delta;
     if (flashTimer > 0) flashTimer -= delta;
@@ -358,31 +358,13 @@ const Scene2 = (() => {
   }
 
   function drawTimer() {
-    const seconds = Math.ceil(timeLeft / 1000);
-    const urgent = timeLeft <= 10000;
     const timerW = 90;
-    const timerH = 40;
-    const x = width - timerW - 16;
-    const y = height * 0.1;
-
-    ctx.fillStyle = urgent ? 'rgba(196, 92, 58, 0.85)' : 'rgba(26, 20, 16, 0.8)';
-    CanvasUtils.roundRect(ctx, x, y, timerW, timerH, 10);
-    ctx.fill();
-
-    ctx.strokeStyle = urgent ? '#e07070' : 'rgba(212, 160, 60, 0.5)';
-    ctx.lineWidth = 2;
-    CanvasUtils.roundRect(ctx, x, y, timerW, timerH, 10);
-    ctx.stroke();
-
-    ctx.fillStyle = urgent ? '#ffe0e0' : '#f5efe6';
-    ctx.font = `700 ${Math.max(16, width * 0.04)}px Nunito, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${seconds}s`, x + timerW / 2, y + timerH / 2);
-
-    ctx.fillStyle = 'rgba(232, 213, 181, 0.6)';
-    ctx.font = `600 ${Math.max(9, width * 0.02)}px Nunito, sans-serif`;
-    ctx.fillText('Tiempo', x + timerW / 2, y - 8);
+    CanvasUtils.drawTimerBadge(ctx, {
+      x: width - timerW - 16,
+      y: height * 0.1,
+      ms: timeLeft,
+      urgent: timeLeft <= 10000,
+    });
   }
 
   function drawLevelScore() {
@@ -584,11 +566,40 @@ const Scene2 = (() => {
     finished = true;
   }
 
+  /** Reajusta dimensiones sin reiniciar el nivel (rotación / resize). */
+  function onResize(w, h) {
+    const centerRatio = (tray.x + tray.w / 2) / width;
+    const trayW = Math.min(w * 0.28, 130);
+    const trayH = Math.min(h * 0.07, 36);
+
+    width = w;
+    height = h;
+    tray.w = trayW;
+    tray.h = trayH;
+    tray.y = h * 0.82;
+    tray.x = CanvasUtils.clamp(centerRatio * w - trayW / 2, 8, w - trayW - 8);
+  }
+
+  /** @param {boolean} active */
+  function setMoveLeft(active) {
+    keys.left = active;
+  }
+
+  /** @param {boolean} active */
+  function setMoveRight(active) {
+    keys.right = active;
+  }
+
   return {
     init,
     update,
     render,
     handlePointerMove,
+    setMoveLeft,
+    setMoveRight,
+    onResize,
     destroy,
   };
 })();
+
+

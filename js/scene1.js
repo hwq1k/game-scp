@@ -21,6 +21,7 @@ const Scene1 = (() => {
   let finished = false;
   let keyHandler = null;
   let particles = [];
+  let lastHudKey = '';
 
   const PressRenderer = {
     drawBackground(context, w, h) {
@@ -148,39 +149,21 @@ const Scene1 = (() => {
     },
 
     drawTimer(context, w, h, ms, urgent) {
-      const seconds = Math.ceil(ms / 1000);
       const timerW = 90;
-      const timerH = 40;
-      const x = w / 2 - timerW / 2;
-      const y = h * 0.1;
-
-      context.fillStyle = urgent ? 'rgba(196, 92, 58, 0.85)' : 'rgba(26, 20, 16, 0.8)';
-      CanvasUtils.roundRect(context, x, y, timerW, timerH, 10);
-      context.fill();
-
-      context.strokeStyle = urgent ? '#e07070' : 'rgba(212, 160, 60, 0.5)';
-      context.lineWidth = 2;
-      CanvasUtils.roundRect(context, x, y, timerW, timerH, 10);
-      context.stroke();
-
-      context.fillStyle = urgent ? '#ffe0e0' : '#f5efe6';
-      context.font = `700 ${Math.max(16, w * 0.04)}px Nunito, sans-serif`;
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText(`${seconds}s`, w / 2, y + timerH / 2);
-
-      context.fillStyle = 'rgba(232, 213, 181, 0.6)';
-      context.font = `600 ${Math.max(9, w * 0.02)}px Nunito, sans-serif`;
-      context.fillText('Tiempo', w / 2, y - 8);
+      CanvasUtils.drawTimerBadge(context, {
+        x: w / 2 - timerW / 2,
+        y: h * 0.1,
+        ms,
+        urgent,
+      });
     },
 
     drawHint(context, w, h) {
       context.fillStyle = 'rgba(232, 213, 181, 0.55)';
       context.font = `600 ${Math.max(10, w * 0.022)}px Nunito, sans-serif`;
       context.textAlign = 'center';
-      const isMobile = 'ontouchstart' in window;
-      const hint = isMobile
-        ? 'Toca la pantalla para prensar'
+      const hint = TouchControls.shouldShow()
+        ? 'Toca la pantalla o el botón Prensar'
         : 'Presiona ESPACIO repetidamente';
       context.fillText(hint, w / 2, h * 0.93);
     },
@@ -211,14 +194,10 @@ const Scene1 = (() => {
     compressTarget = 0;
     finished = false;
     particles = [];
+    lastHudKey = '';
 
     AudioFX.init();
-
-    UI.updateSceneHud(
-      'Nivel 1: La Prensa de Papas',
-      'Prensa las papas hasta el 100% antes de que acabe el tiempo',
-      [{ ingredientId: 'papa', label: 'Base de papa', done: false }]
-    );
+    updateHud();
 
     keyHandler = (e) => {
       if (e.code === 'Space' && !finished) {
@@ -227,6 +206,21 @@ const Scene1 = (() => {
       }
     };
     window.addEventListener('keydown', keyHandler);
+  }
+
+  function updateHud() {
+    const done = progress >= 100;
+    const key = `${Math.floor(progress)}|${done}`;
+    if (key === lastHudKey) return;
+    lastHudKey = key;
+
+    UI.updateSceneHud(
+      'Nivel 1: La Prensa de Papas',
+      done
+        ? '¡Base lista!'
+        : `Prensa las papas — ${Math.floor(progress)}% completado`,
+      [{ ingredientId: 'papa', label: 'Base de papa', done }]
+    );
   }
 
   function addBurstParticles() {
@@ -255,11 +249,7 @@ const Scene1 = (() => {
     addBurstParticles();
     AudioFX.press();
 
-    UI.updateSceneHud(
-      'Nivel 1: La Prensa de Papas',
-      `Prensa las papas — ${Math.floor(progress)}% completado`,
-      [{ ingredientId: 'papa', label: 'Base de papa', done: progress >= 100 }]
-    );
+    updateHud();
 
     if (progress >= 100) {
       winLevel();
@@ -308,13 +298,13 @@ const Scene1 = (() => {
     compressTarget *= COMPRESS_DECAY;
     compressAmount += (compressTarget - compressAmount) * 0.35;
 
-    particles = particles.filter((p) => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.06;
-      p.life -= delta;
-      return p.life > 0;
-    });
+    particles = CanvasUtils.updateParticles(particles, delta, 0.06);
+  }
+
+  /** Reajusta dimensiones sin reiniciar el nivel (rotación / resize). */
+  function onResize(w, h) {
+    width = w;
+    height = h;
   }
 
   function render() {
@@ -344,11 +334,19 @@ const Scene1 = (() => {
     finished = true;
   }
 
+  function triggerPress() {
+    doPress();
+  }
+
   return {
     init,
     update,
     render,
     handleClick,
+    triggerPress,
+    onResize,
     destroy,
   };
 })();
+
+

@@ -40,15 +40,10 @@ const HomeBG = (() => {
 
   function resize() {
     if (!canvas) return;
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    width = rect.width;
-    height = rect.height;
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const size = CanvasUtils.syncCanvasSize(canvas, ctx);
+    if (!size) return;
+    width = size.width;
+    height = size.height;
     if (items.length === 0) initItems();
   }
 
@@ -102,6 +97,7 @@ const HomeBG = (() => {
     lastTime = timestamp;
 
     update(delta);
+    CanvasUtils.beginFrame(ctx, canvas);
     drawBackground();
     drawItems();
 
