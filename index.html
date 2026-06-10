@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="El Secreto de la Causa Piurana - Un juego educativo sobre la tradición culinaria de Piura, Perú">
+  <meta name="theme-color" content="#D91023">
+  <title>El Secreto de la Causa Piurana</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Pantalla principal -->
+    <section id="screen-home" class="home-screen" aria-label="Menú principal">
+      <canvas id="home-bg-canvas" class="home-bg-canvas" aria-hidden="true"></canvas>
+      <div class="home-overlay"></div>
+
+      <div class="home-content">
+        <header class="home-header home-animate home-animate--1">
+          <p class="home-tagline">Gastronomía piurana</p>
+          <h1 class="home-logo">
+            <span class="home-logo__line">El Secreto de la</span>
+            <span class="home-logo__title">Causa Piurana</span>
+          </h1>
+        </header>
+
+        <div class="home-best home-animate home-animate--2" aria-live="polite">
+          <span class="home-best__label">Mejor puntaje</span>
+          <span id="home-best-score" class="home-best__value">0</span>
+          <span class="home-best__star" aria-hidden="true">★</span>
+        </div>
+
+        <nav class="home-nav home-animate home-animate--3" aria-label="Menú de inicio">
+          <button id="btn-start" class="home-btn home-btn--primary" type="button">Jugar</button>
+          <button id="btn-records" class="home-btn home-btn--secondary" type="button">Tabla de récords</button>
+          <button id="btn-credits" class="home-btn home-btn--secondary" type="button">Créditos</button>
+        </nav>
+
+        <p class="home-footer home-animate home-animate--4">Piura · Perú</p>
+      </div>
+    </section>
+
+    <!-- Área de juego -->
+    <div id="game-area" class="game-area hidden">
+      <header class="game-header">
+        <h1 class="game-title">El Secreto de la Causa Piurana</h1>
+        <div id="score-display" class="score-display hidden" aria-live="polite">
+          <span class="score-label">Puntos</span>
+          <span id="score-value" class="score-value">0</span>
+        </div>
+      </header>
+
+      <main class="game-main">
+        <div class="canvas-wrapper">
+          <canvas id="game-canvas" aria-label="Área de juego"></canvas>
+
+          <div id="screen-defeat" class="overlay-screen hidden">
+            <div class="overlay-content overlay-content--compact">
+              <div class="game-panel game-panel--defeat">
+                <div class="icon-badge icon-badge--timer" aria-hidden="true"></div>
+                <h2 id="defeat-title">Tiempo agotado</h2>
+                <p id="defeat-text" class="overlay-text"></p>
+                <div class="btn-wrap">
+                  <button id="btn-retry" class="btn btn-primary" type="button">Reintentar nivel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="screen-transition" class="overlay-screen hidden">
+            <div class="overlay-content overlay-content--compact">
+              <div class="game-panel game-panel--success">
+                <div class="logo-wrap">
+                  <canvas class="logo-canvas" width="80" height="80" aria-hidden="true"></canvas>
+                </div>
+                <h2 id="transition-title">¡Las papas están listas!</h2>
+                <p id="transition-text" class="overlay-text hidden"></p>
+                <div id="transition-score-box" class="final-score-box">
+                  <span class="final-score-label">Puntaje obtenido</span>
+                  <span id="transition-score" class="final-score-value">0</span>
+                </div>
+                <div class="btn-wrap">
+                  <button id="btn-continue" class="btn btn-primary" type="button">Continuar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="screen-victory" class="overlay-screen hidden">
+            <div class="overlay-content overlay-content--victory">
+              <div class="game-panel game-panel--victory">
+                <div id="victory-stars" class="victory-stars" aria-label="Estrellas de desempeño">
+                  <span class="star" aria-hidden="true">★</span>
+                  <span class="star" aria-hidden="true">★</span>
+                  <span class="star" aria-hidden="true">★</span>
+                </div>
+                <h2 id="victory-title">Has descubierto el Secreto de la Causa Piurana</h2>
+                <div class="victory-stats">
+                  <div class="final-score-box final-score-box--compact">
+                    <span class="final-score-label">Puntaje final</span>
+                    <span id="final-score" class="final-score-value">0</span>
+                  </div>
+                  <div class="final-score-box final-score-box--compact">
+                    <span class="final-score-label">Tiempo restante</span>
+                    <span id="final-time" class="final-time-value">0 s</span>
+                  </div>
+                </div>
+                <div class="btn-wrap">
+                  <button id="btn-restart" class="btn btn-primary" type="button">Jugar nuevamente</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside id="scene-hud" class="scene-hud hidden" aria-live="polite">
+          <p id="scene-name" class="scene-name"></p>
+          <p id="scene-objective" class="scene-objective"></p>
+          <div id="scene-progress" class="scene-progress"></div>
+        </aside>
+      </main>
+
+      <footer class="game-footer">
+        <p>Tradición culinaria del norte peruano · Piura</p>
+      </footer>
+    </div>
+
+    <!-- Modal: Tabla de récords -->
+    <div id="modal-records" class="home-modal hidden" role="dialog" aria-labelledby="modal-records-title" aria-modal="true">
+      <div class="home-modal__backdrop" data-close-modal></div>
+      <div class="home-modal__panel home-animate">
+        <h2 id="modal-records-title" class="home-modal__title">Tabla de récords</h2>
+        <ol id="records-list" class="records-list"></ol>
+        <p id="records-empty" class="records-empty hidden">Aún no hay récords. ¡Juega para establecer el primero!</p>
+        <button class="home-btn home-btn--secondary home-modal__close" type="button" data-close-modal>Cerrar</button>
+      </div>
+    </div>
+
+    <!-- Modal: Créditos -->
+    <div id="modal-credits" class="home-modal hidden" role="dialog" aria-labelledby="modal-credits-title" aria-modal="true">
+      <div class="home-modal__backdrop" data-close-modal></div>
+      <div class="home-modal__panel home-animate">
+        <h2 id="modal-credits-title" class="home-modal__title">Créditos</h2>
+        <div class="credits-body">
+          <p><strong>El Secreto de la Causa Piurana</strong></p>
+          <p>Juego educativo sobre la tradición culinaria de Piura, en el norte del Perú.</p>
+          <p>Desarrollado con HTML5 Canvas y JavaScript puro.</p>
+          <p class="credits-highlight">¡Descubre el secreto de la auténtica causa piurana!</p>
+        </div>
+        <button class="home-btn home-btn--secondary home-modal__close" type="button" data-close-modal>Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/audio.js"></script>
+  <script src="js/canvas-utils.js"></script>
+  <script src="js/ingredients.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/scene1.js"></script>
+  <script src="js/scene2.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
